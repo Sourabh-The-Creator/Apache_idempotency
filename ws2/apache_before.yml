@@ -1,0 +1,52 @@
+- hosts: all
+  vars_prompt:
+          - name: "doc_root"
+            prompt: "Enter document root name "
+            private: no
+          - name: "http_port"
+            prompt: "Enter port no "
+            private: no
+  tasks:
+          - name: 'Install httpd'
+            package:
+                    name: 'httpd'
+                    state: present
+            register: x
+
+          - name: "Create folder for document root"
+            file:
+                    name: "{{ doc_root}}"
+                    state: directory
+
+          - name: "copy config file"
+            template:
+                    src: 'webserver.conf'
+                    dest: '/etc/httpd/conf.d/webserver.conf'
+            when: x.rc == 0
+            notify: Start Service
+
+          - name: "Copy index.html"
+            copy:
+                    dest: "{{ doc_root }}/"
+                    src: "index.html"
+
+          - name: "start services"
+            service:
+                    name: "httpd"
+                    state: started
+                    enabled: yes
+                    
+          - name: "allow port"
+            firewalld:
+                    port: "{{ http_port }}/tcp"
+                    state: enabled
+                    permanent: yes
+                    immediate: yes
+
+                    
+  handlers:
+          - name: Start Service
+            service:
+                    name: "httpd"
+                    state: restarted
+                    
